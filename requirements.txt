@@ -1,0 +1,12 @@
+We are implementing a simple hash function
+
+Deterministic Output: Given the same input, the hash function should always produce the same output.
+Fixed Output Size: The hash function should generate a fixed-size output regardless of the input size.
+Uniform Distribution: Output values should be evenly distributed across the possible output range to minimize collisions.
+Efficiency: The hash function should be computationally efficient, calculating results quickly even for large inputs.
+Avalanche Effect: Small changes in the input (even a single bit) should result in significant changes to the output.
+Low Collision Rate: Different inputs should rarely produce the same output hash.
+One-way Operation: It should be computationally infeasible to reverse the function to determine the original input from the hash value.
+Input Handling: The function should be able to handle various input types and sizes.
+Platform Independence: The hash function should produce consistent results across different hardware and software platforms.
+Implementation Simplicity: The algorithm should be straightforward to implement in most programming languages.
