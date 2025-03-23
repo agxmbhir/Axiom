@@ -6,7 +6,7 @@ Axiom is a system designed to formally verify AI-generated code. It provides a m
 
 Axiom consists of several core components:
 
-1. **Specification Generator** - Translates natural language requirements into formal specifications in verification languages (F*, Dafny, Coq, etc.)
+1. **Specification Generator** - Translates natural language requirements into formal specifications in verification languages (F\*, Dafny, Coq, etc.)
 2. **Implementation Generator** - Creates code from specifications
 3. **Verification Engine** - Proves that implementations satisfy specifications
 4. **Language Adapters** - Provide language-specific functionality
@@ -16,7 +16,7 @@ Axiom consists of several core components:
 ## Features
 
 - Language-agnostic design (supports multiple implementation languages)
-- Integration with different formal verification systems (F*, Dafny, Coq, etc.)
+- Integration with different formal verification systems (F\*, Dafny, Coq, etc.)
 - Direct translation from natural language to formal specifications
 - Multiple formal specification paradigms (pre/post conditions, type theory, etc.)
 - Comprehensive error handling for specification translation failures
@@ -49,11 +49,11 @@ cargo test
 
 ```rust
 use axiom::{
-    AxiomSystem, 
-    Domain, 
-    Language, 
+    AxiomSystem,
+    Domain,
+    Language,
     VerificationLanguage,
-    AxiomOptions, 
+    AxiomOptions,
     VerificationSystem,
     SpecificationOptions,
     ValidationDepth
@@ -98,21 +98,17 @@ if is_valid {
         Language::Rust,
         &implementation_options,
     )?;
-    
+
     // Verify implementation against formal spec
     let verification_result = axiom.verify_against_formal_spec(
         &implementation,
         &formal_spec,
         &verification_options,
     )?;
-    
+
     if verification_result.status.is_verified() {
         println!("Verification successful!");
         println!("Implementation: {}", implementation.source_code);
     }
 }
 ```
-
-## License
-
-MIT License# Axiom
