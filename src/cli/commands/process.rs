@@ -173,9 +173,9 @@ pub async fn execute<S: AxiomSystem>(
 
     let spinner = ui::spinner_with_message("Validating specification...");
 
-    let is_valid = axiom.validate_specification(&spec, &requirements, validation_depth)?;
+    let validation_report = axiom.validate_specification(&spec, &requirements, validation_depth)?;
 
-    if is_valid {
+    if validation_report.is_valid {
         spinner.finish_with_message("Specification validated successfully!");
     } else {
         spinner.finish_with_message("Specification validation found issues.");

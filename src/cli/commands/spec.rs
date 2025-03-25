@@ -65,7 +65,9 @@ pub async fn execute<S: AxiomSystem>(
     ui::display_specification(&verification_language, &formal_spec.spec_code);
     
     // Create project directory structure
-    let project_name = format!("project_{}", chrono::Utc::now().timestamp());
+    let domain_str = domain_str.replace(" ", "_").to_lowercase();
+    let timestamp = chrono::Utc::now().timestamp();
+    let project_name = format!("{}_{}", domain_str, timestamp);
     let project_dir = std::path::Path::new("projects").join(&project_name);
     fs::create_dir_all(&project_dir)?;
     
@@ -86,6 +88,13 @@ pub async fn execute<S: AxiomSystem>(
     let spec_path = project_dir.join(format!("spec.{}", extension));
     fs::write(&spec_path, &formal_spec.spec_code)?;
     ui::print_success(format!("Specification saved to {}", spec_path.display()).as_str());
+    
+    // Save the natural language description
+    if let Some(description) = formal_spec.components.get("description") {
+        let description_path = project_dir.join("description.md");
+        fs::write(&description_path, description)?;
+        ui::print_success(format!("Description saved to {}", description_path.display()).as_str());
+    }
     
     // Save to output path if provided
     if let Some(output_path) = output_path {

@@ -75,7 +75,7 @@ pub enum Commands {
 
     /// Validate a formal specification
     Validate {
-        /// Path to specification file
+        /// Path to specification file or project name in projects directory
         #[arg(short, long)]
         spec: PathBuf,
 
@@ -86,6 +86,10 @@ pub enum Commands {
         /// Requirements file for completeness checking
         #[arg(short, long)]
         requirements: Option<PathBuf>,
+        
+        /// Validate a project in the projects directory
+        #[arg(short, long, default_value = "false")]
+        project: bool,
     },
 
     /// Generate implementation from a specification

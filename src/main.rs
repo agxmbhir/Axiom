@@ -68,33 +68,33 @@ impl crate::axiom::traits::axiom_system::AxiomSystem for AxiomSystemImpl {
         info!("Generating formal specification for domain: {:?}", domain);
         info!("Verification language: {:?}", verification_language);
         info!("Requirements count: {}", requirements.len());
-        
+
         // Log the requirements
         info!("Requirements:");
         for (i, req) in requirements.iter().enumerate() {
-            info!("  Requirement {}: {}", i+1, req);
+            info!("  Requirement {}: {}", i + 1, req);
         }
-        
+
         // Instead of trying to use block_on inside an async context,
         // we'll create a separate runtime for synchronous use within this function
-        
+
         // Clone the values we need to move into the closure
         let requirements_clone = requirements.to_vec();
         let domain_clone = domain.clone();
         let options_clone = options.clone();
         let generator = self.spec_generator.clone();
-        
+
         // Spawn a new thread with a new runtime to handle the async call
         info!("Creating new thread to handle async specification generation");
         let handle = std::thread::spawn(move || {
             // Create a new runtime for this thread
             let rt = tokio::runtime::Runtime::new().unwrap();
-            
+
             // Execute the async task in the new runtime
             rt.block_on(async {
                 let mut spec_options = options_clone;
                 spec_options.verification_language = verification_language.clone();
-                
+
                 // Use the generator to create the specification
                 info!("Calling LLM API for specification generation");
                 let spec = generator.generate_specification(
@@ -102,33 +102,37 @@ impl crate::axiom::traits::axiom_system::AxiomSystem for AxiomSystemImpl {
                     domain_clone,
                     &spec_options
                 ).await?;
-                
+
                 // Return just the formal specification part
                 Ok::<_, crate::errors::AxiomError>(spec.formal_spec)
             })
         });
-        
+
         // Wait for the thread to complete and get the result
         info!("Waiting for specification generation to complete");
         match handle.join() {
             Ok(result) => {
                 match result {
                     Ok(formal_spec) => {
-                        info!("Successfully generated specification with {} characters", 
-                              formal_spec.spec_code.len());
+                        info!(
+                            "Successfully generated specification with {} characters",
+                            formal_spec.spec_code.len()
+                        );
                         Ok(formal_spec)
-                    },
+                    }
                     Err(e) => {
                         error!("Error generating specification: {}", e);
                         Err(e)
                     }
                 }
-            },
+            }
             Err(e) => {
                 error!("Thread panicked during specification generation");
-                Err(crate::errors::AxiomError::SystemError(
-                    format!("Thread panic during specification generation: {:?}", e)
-                ))
+                Err(
+                    crate::errors::AxiomError::SystemError(
+                        format!("Thread panic during specification generation: {:?}", e)
+                    )
+                )
             }
         }
     }
@@ -139,20 +143,20 @@ impl crate::axiom::traits::axiom_system::AxiomSystem for AxiomSystemImpl {
         spec: &crate::models::specification::Specification,
         requirements: &[String],
         validation_depth: crate::traits::specification_generator::ValidationDepth
-    ) -> crate::errors::AxiomResult<bool> {
+    ) -> crate::errors::AxiomResult<crate::models::specification::ValidationReport> {
         info!("Validating specification with depth: {:?}", validation_depth);
-        
+
         // Clone the values we need to move into the closure
         let spec_clone = spec.clone();
         let validation_depth_clone = validation_depth.clone();
         let generator = self.spec_generator.clone();
-        
+
         // Spawn a new thread with a new runtime to handle the async call
         info!("Creating new thread to handle async specification validation");
         let handle = std::thread::spawn(move || {
             // Create a new runtime for this thread
             let rt = tokio::runtime::Runtime::new().unwrap();
-            
+
             // Execute the async task in the new runtime
             rt.block_on(async {
                 info!("Calling LLM API for specification validation");
@@ -160,46 +164,58 @@ impl crate::axiom::traits::axiom_system::AxiomSystem for AxiomSystemImpl {
                     &spec_clone,
                     validation_depth_clone
                 ).await?;
-                
+
                 if !validation_report.is_valid {
                     info!("Validation failed with {} issues", validation_report.issues.len());
                     for (i, issue) in validation_report.issues.iter().enumerate() {
-                        info!("Issue {}: {} (severity: {:?})", i + 1, issue.message, issue.severity);
+                        info!(
+                            "Issue {}: {} (severity: {:?})",
+                            i + 1,
+                            issue.message,
+                            issue.severity
+                        );
                         if let Some(line) = issue.line_number {
                             info!("  At line: {}", line);
                         }
                         if let Some(fix) = &issue.suggested_fix {
-                            info!("  Suggested fix: {}", fix);
+                            info!("  Suggested fix available");
                         }
                     }
                 } else {
                     info!("Validation successful");
                 }
-                
-                Ok::<_, crate::errors::AxiomError>(validation_report.is_valid)
+
+                // Return the complete validation report instead of just a boolean
+                Ok::<_, crate::errors::AxiomError>(validation_report)
             })
         });
-        
+
         // Wait for the thread to complete and get the result
         info!("Waiting for validation to complete");
         match handle.join() {
             Ok(result) => {
                 match result {
-                    Ok(is_valid) => {
-                        info!("Validation completed, result: {}", if is_valid { "valid" } else { "invalid" });
-                        Ok(is_valid)
-                    },
+                    Ok(report) => {
+                        info!("Validation completed, result: {}", if report.is_valid {
+                            "valid"
+                        } else {
+                            "invalid"
+                        });
+                        Ok(report)
+                    }
                     Err(e) => {
                         error!("Error during validation: {}", e);
                         Err(e)
                     }
                 }
-            },
+            }
             Err(e) => {
                 error!("Thread panicked during validation");
-                Err(crate::errors::AxiomError::SystemError(
-                    format!("Thread panic during validation: {:?}", e)
-                ))
+                Err(
+                    crate::errors::AxiomError::SystemError(
+                        format!("Thread panic during validation: {:?}", e)
+                    )
+                )
             }
         }
     }
@@ -294,11 +310,14 @@ impl crate::axiom::traits::axiom_system::AxiomSystem for AxiomSystemImpl {
         requirements: &[String]
     ) -> crate::errors::AxiomResult<(bool, Vec<String>)> {
         info!("Checking specification completeness against {} requirements", requirements.len());
-        
+
         // Call the generator to verify completeness
         info!("Calling LLM to verify specification completeness");
-        let result = self.spec_generator.verify_specification_completeness(spec, requirements).await?;
-        
+        let result = self.spec_generator.verify_specification_completeness(
+            spec,
+            requirements
+        ).await?;
+
         if result.0 {
             info!("Specification covers all requirements");
         } else {
@@ -308,7 +327,7 @@ impl crate::axiom::traits::axiom_system::AxiomSystem for AxiomSystemImpl {
                 info!("  Missing requirement {}: {}", i + 1, req);
             }
         }
-        
+
         Ok(result)
     }
 }
@@ -386,29 +405,15 @@ async fn main() -> Result<()> {
                 None => None,
             };
 
-            // Parse verification language if provided
-            let verification_lang = match verification_language {
-                Some(lang) =>
-                    match lang.to_lowercase().as_str() {
-                        "fstar" => Some(crate::models::common::VerificationLanguage::FStarLang),
-                        "dafny" => Some(crate::models::common::VerificationLanguage::DafnyLang),
-                        "coq" => Some(crate::models::common::VerificationLanguage::CoqLang),
-                        "isabelle" =>
-                            Some(crate::models::common::VerificationLanguage::IsabelleLang),
-                        "lean" => Some(crate::models::common::VerificationLanguage::LeanLang),
-                        "tla" | "tlaplus" =>
-                            Some(crate::models::common::VerificationLanguage::TLAPlus),
-                        "why3" => Some(crate::models::common::VerificationLanguage::Why3Lang),
-                        "z3" | "smt" => Some(crate::models::common::VerificationLanguage::Z3SMT),
-                        "acsl" => Some(crate::models::common::VerificationLanguage::ACSL),
-                        "jml" => Some(crate::models::common::VerificationLanguage::JML),
-                        "liquid" => Some(crate::models::common::VerificationLanguage::Liquid),
-                        "mirai" => Some(crate::models::common::VerificationLanguage::RustMIRAI),
-                        _ =>
-                            Some(crate::models::common::VerificationLanguage::Custom(lang.clone())),
-                    }
-                None => None,
-            };
+            // Always use F* as the verification language
+            let verification_lang = Some(crate::models::common::VerificationLanguage::FStarLang);
+            
+            // Log if a different language was requested but F* is being used instead
+            if let Some(lang) = verification_language {
+                if !lang.to_lowercase().contains("fstar") && !lang.to_lowercase().contains("f*") {
+                    info!("Requested verification language '{}' ignored - using F* only", lang);
+                }
+            }
 
             // Execute the process command
             cli::commands::process::execute(
@@ -436,12 +441,13 @@ async fn main() -> Result<()> {
         }
 
         // Validate command - validate a formal specification
-        Commands::Validate { spec, depth, requirements } => {
+        Commands::Validate { spec, depth, requirements, project } => {
             cli::commands::validate::execute(
                 &axiom_system,
                 spec,
                 depth,
-                requirements.as_deref()
+                requirements.as_deref(),
+                *project
             ).await?;
         }
 

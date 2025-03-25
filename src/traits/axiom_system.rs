@@ -52,12 +52,14 @@ pub trait AxiomSystem {
     ) -> AxiomResult<FormalSpecification>;
 
     /// Validate a specification against requirements and check its internal consistency
+    /// Returns a validation report that includes whether the specification is valid
+    /// and any issues found. If issues are found, it will attempt to fix them automatically.
     fn validate_specification(
         &self,
         spec: &Specification,
         requirements: &[String],
         validation_depth: ValidationDepth
-    ) -> AxiomResult<bool>;
+    ) -> AxiomResult<crate::models::specification::ValidationReport>;
 
     /// Generate implementation from formal specification
     fn generate_implementation_from_formal_spec(
